@@ -196,7 +196,8 @@ while true; do
             ;;
 
         # Enter Key: Confirm/Submit (Enter is $'\x0a' or sometimes $'\r' for Carriage Return)
-        $'\n' | $'\r') 
+        #$'\n' | $'\r') 
+        $'\x0a' | '') 
             break # Exit the loop and run the cleanup/output section
             ;; 
         
@@ -227,3 +228,5 @@ for i in "${!FEATURES[@]}"; do
 done
 echo "-----------------------------------"
 echo "FINAL_SELECTION_TAGS=\"$FINAL_SELECTION\""
+
+sleep 80
