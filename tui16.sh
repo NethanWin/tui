@@ -65,8 +65,10 @@ function apply_mode_defaults() {
 }
 
 function draw_mode_list() {
-    echo -e "${MOVE_CURSOR}${TITLE_ROW} ${RADIO_COL}${BOLD_ON}1. Installation Mode (Up/Down/Space key)${BOLD_OFF}"
+    #echo -e "${MOVE_CURSOR}${TITLE_ROW} ${RADIO_COL}${BOLD_ON}1. Installation Mode (Up/Down/Space key)${BOLD_OFF}"
 
+    echo "      Choose Install Option:      "
+    echo
     for i in "${!MODES[@]}"; do
         ROW=$((i + START_ROW))
 
@@ -82,12 +84,17 @@ function draw_mode_list() {
             STATUS="*"
         fi
         
-        echo -e "${MOVE_CURSOR}${ROW} ${RADIO_COL}${HIGHLIGHT}(${STATUS}) ${MODES[$i]}${CLEAR}      "
+        echo -e "      ${HIGHLIGHT}(${STATUS}) ${MODES[$i]}${CLEAR}      "
+        #echo -e "${MOVE_CURSOR}${ROW} ${RADIO_COL}${HIGHLIGHT}(${STATUS}) ${MODES[$i]}${CLEAR}      "
     done
 }
 
 function draw_feature_list() {
-    echo -e "${MOVE_CURSOR}${TITLE_ROW} ${CHECK_COL}${BOLD_ON}2. Optional Features (Up/Down/Space key)${BOLD_OFF}"
+    echo
+    echo
+    echo
+    echo -e "           Advenced Selection${BOLD_OFF}"
+    echo
 
     for i in "${!FEATURES[@]}"; do
         ROW=$((i + START_ROW))
@@ -107,7 +114,8 @@ function draw_feature_list() {
 
         DESCRIPTION=$(echo "${FEATURES[$i]}" | cut -d: -f2)
         
-        echo -e "${MOVE_CURSOR}${ROW} ${CHECK_COL}${HIGHLIGHT}[${STATUS}] ${DESCRIPTION}${CLEAR}      "
+        echo -e "     ${HIGHLIGHT}[${STATUS}] ${DESCRIPTION}${CLEAR}      "
+        #echo -e "${MOVE_CURSOR}${ROW} ${CHECK_COL}${HIGHLIGHT}[${STATUS}] ${DESCRIPTION}${CLEAR}      "
     done
 }
 
@@ -145,7 +153,9 @@ while true; do
         draw_mode_list
         draw_feature_list
         # FINAL INSTRUCTIONS
-        echo -e "${MOVE_CURSOR}${INSTRUCT_ROW} 5${BOLD_ON}Instructions:${BOLD_OFF} Use [Up]/[Down] to move, [Space] to select/toggle, [Enter] to submit, [Q] to quit."
+        echo
+        echo -e "       Instructions:${BOLD_OFF} Use [Up]/[Down] to move, [Space] to select/toggle"
+        echo -e "                     [Enter] to apply, [Q] to quit."
         NEEDS_REDRAW=0
     fi
 
@@ -229,4 +239,5 @@ done
 echo "-----------------------------------"
 echo "FINAL_SELECTION_TAGS=\"$FINAL_SELECTION\""
 
-sleep 80
+echo damn
+sleep 5
