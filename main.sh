@@ -1,19 +1,23 @@
 #!/bin/bash
 
+# make it countine to the other file
+
+
 # --- Configuration & State ---
-MODES=("BASIC" "STANDARD" "ADVANCED")
+
+
+MODES=("Dev" "All" "Minimal")
 NUM_MODES=${#MODES[@]}
 MODE_END_INDEX=$((NUM_MODES - 1)) # Index of the last mode
 
 FEATURES=(
-    "DB_OPTIMIZE:Database Tuning and Optimization:0"
-    "WEB_CACHING:Enable Web Server Caching:0"
+    "DB_OPTIMIZE:Database Tuning and Optimization:0" "WEB_CACHING:Enable Web Server Caching:0"
     "LOG_ROTATE:Setup Log Rotation & Monitoring:0"
     "NET_FIREWALL:Configure Network Firewall Rules:0"
     "BENCHMARKS:Run Post-Install Benchmarks:0"
 )
 NUM_FEATURES=${#FEATURES[@]}
-TOTAL_ITEMS=$((NUM_MODES + NUM_FEATURES))
+TOTAL_ITEMS=$((NUM_MODES + NUM_FEATURES))   # to know when youre in the last item and then go up
 
 # Current State Variables
 CURRENT_FOCUS_INDEX=0   
@@ -26,7 +30,11 @@ for i in "${!FEATURES[@]}"; do
 done
 
 # --- Terminal Control Codes (set using tput) ---
-CLEAR_SCREEN=$(tput clear)
+
+clear_screen() {
+    tput clear
+}
+
 MOVE_CURSOR=$(tput cup)
 CURSOR_HIDE=$(tput civis)
 CURSOR_SHOW=$(tput cnorm)
@@ -53,11 +61,11 @@ function apply_mode_defaults() {
     done
 
     # Apply defaults
-    if [[ "$mode" == "ADVANCED" ]]; then
+    if [[ $CURRENT_MODE_INDEX == 1 ]]; then
         for i in "${!FEATURE_STATES[@]}"; do
             FEATURE_STATES[$i]=1
         done
-    elif [[ "$mode" == "STANDARD" ]]; then
+    elif [[ $CURRENT_MODE_INDEX == 2 ]]; then
         FEATURE_STATES[0]=1
         FEATURE_STATES[2]=1
     fi
@@ -128,7 +136,9 @@ fi
 CURRENT_MODE_INDEX=$CURRENT_FOCUS_INDEX 
 apply_mode_defaults 
 
-echo -e "${CURSOR_HIDE}${CLEAR_SCREEN}"
+# setup screen to "raw mode"
+echo -e "${CURSOR_HIDE}"
+clear_screen
 tput smcup
 
 # Save current terminal settings
@@ -145,22 +155,10 @@ function cleanup() {
 }
 trap cleanup EXIT
 
-# --- Main Interaction Loop (Final Key Mapping) ---
-while true; do
-    
-    if [[ $NEEDS_REDRAW -eq 1 ]]; then
-        echo -e "${CLEAR_SCREEN}"
-        draw_mode_list
-        draw_feature_list
-        # FINAL INSTRUCTIONS
-        echo
-        echo -e "       Instructions:${BOLD_OFF} Use [Up]/[Down] to move, [Space] to select/toggle"
-        echo -e "                     [Enter] to apply, [Q] to quit."
-        NEEDS_REDRAW=0
-    fi
-
+function handle_key_press() {
     # Read single character without timeout
-    key=$(dd bs=1 count=1 2>/dev/null)
+    IFS='' read -n 1 -s -r key
+    #key=$(dd bs=1 count=1 2>/dev/null) # old way not needed
 
     # Handle Escape Sequences (Arrows)
     if [[ "$key" == $'\x1b' ]]; then
@@ -177,12 +175,14 @@ while true; do
                 CURRENT_FOCUS_INDEX=$((CURRENT_FOCUS_INDEX - 1))
             fi
             NEEDS_REDRAW=1
+            return 0
             ;;
         $'\x1b[B') # DOWN Arrow
             if (( CURRENT_FOCUS_INDEX < TOTAL_ITEMS - 1 )); then
                 CURRENT_FOCUS_INDEX=$((CURRENT_FOCUS_INDEX + 1))
             fi
             NEEDS_REDRAW=1
+            return 0
             ;;
 
         # Space Key ($'\x20' or actual space char ' '): Select Mode OR Toggle Feature
@@ -203,41 +203,82 @@ while true; do
                 fi
             fi
             NEEDS_REDRAW=1
+            return 0
             ;;
 
         # Enter Key: Confirm/Submit (Enter is $'\x0a' or sometimes $'\r' for Carriage Return)
         #$'\n' | $'\r') 
-        $'\x0a' | '') 
-            break # Exit the loop and run the cleanup/output section
+        $'\x0a' | '')
+            IS_CONFIRMED=true
+            return 1 # Exit the loop and run the cleanup/output section
             ;; 
         
         # Q: Quit
         'q' | 'Q') 
-            exit 1 # trap EXIT will handle cleanup
+            IS_CONFIRMED=false
+            return 1 # trap EXIT will handle cleanup
+            ;;
+        *)
+            return 0
             ;;
     esac
-done
+}
 
-# --- Final Output ---
-# Note: Cleanup is handled by the trap EXIT function
-echo "-----------------------------------"
-echo "✅ Configuration Complete"
-echo "-----------------------------------"
-echo "Mode Selected: ${MODES[$CURRENT_MODE_INDEX]}"
-echo "Features Selected:"
-FINAL_SELECTION=""
-for i in "${!FEATURES[@]}"; do
-    if [[ ${FEATURE_STATES[$i]} -eq 1 ]]; then
-        TAG=$(echo "${FEATURES[$i]}" | cut -d: -f1)
-        echo " -> [X] $TAG"
-        FINAL_SELECTION+="$TAG "
+function draw_screen() {
+    tput clear
+    #echo -e "${CLEAR_SCREEN}"
+    draw_mode_list
+    draw_feature_list
+    # FINAL INSTRUCTIONS
+    echo
+    echo -e "       Instructions:${BOLD_OFF} Use [Up]/[Down] to move, [Space] to select/toggle"
+    echo -e "                     [Enter] to apply, [Q] to quit."
+    NEEDS_REDRAW=0
+}
+
+
+function after_tui() {
+    cleanup
+    if $IS_CONFIRMED; then
+        echo "confiremed"
     else
-        TAG=$(echo "${FEATURES[$i]}" | cut -d: -f1)
-        echo " -> [ ] $TAG"
+        echo "quiting"
+    fi
+
+    # --- Final Output ---
+    # Note: Cleanup is handled by the trap EXIT function
+    echo "-----------------------------------"
+    echo "✅ Configuration Complete"
+    echo "-----------------------------------"
+    echo "Mode Selected: ${MODES[$CURRENT_MODE_INDEX]}"
+    echo "Features Selected:"
+    FINAL_SELECTION=""
+    for i in "${!FEATURES[@]}"; do
+        if [[ ${FEATURE_STATES[$i]} -eq 1 ]]; then
+            TAG=$(echo "${FEATURES[$i]}" | cut -d: -f1)
+            echo " -> [X] $TAG"
+            FINAL_SELECTION+="$TAG "
+        else
+            TAG=$(echo "${FEATURES[$i]}" | cut -d: -f1)
+            echo " -> [ ] $TAG"
+        fi
+    done
+    echo "-----------------------------------"
+    echo "FINAL_SELECTION_TAGS=\"$FINAL_SELECTION\""
+
+    echo damn
+    sleep 60
+
+}
+
+
+NEEDS_REDRAW=1
+draw_screen
+# --- Main Interaction Loop (Final Key Mapping) ---
+while handle_key_press; do
+    if [[ $NEEDS_REDRAW -eq 1 ]]; then
+        draw_screen
     fi
 done
-echo "-----------------------------------"
-echo "FINAL_SELECTION_TAGS=\"$FINAL_SELECTION\""
 
-echo damn
-sleep 5
+after_tui
