@@ -118,7 +118,9 @@ function draw_feature_list() {
     echo
     echo
     echo -e "           Advenced Selection${BOLD_OFF}"
-    echo
+    DESCRIPTION=$(echo "${FEATURES[$i]}" | cut -d: -f2)
+    echo -e "${REVERSE_ON}[X] ${DESCRIPTION}${REVERSE_OFF}      "
+    echo 
 
     for i in "${!FEATURES[@]}"; do
         ROW=$((i + START_ROW))
@@ -126,7 +128,7 @@ function draw_feature_list() {
 
         HIGHLIGHT=""
         CLEAR=""
-        if [[ "$FEATURE_FOCUS_INDEX" -eq "$CURRENT_FOCUS_INDEX" ]]; then
+        if [[ "$FEATURE_FOCUS_INDEX" -eq "$CURRENT_FOCUS_INDEX" ]]; then    # sets current to reverse colors
             HIGHLIGHT="${REVERSE_ON}"
             CLEAR="${REVERSE_OFF}"
         fi
@@ -138,9 +140,14 @@ function draw_feature_list() {
 
         DESCRIPTION=$(echo "${FEATURES[$i]}" | cut -d: -f2)
         
-        echo -e "     ${HIGHLIGHT}[${STATUS}] ${DESCRIPTION}${CLEAR}      "
+    #    echo -e "     ${HIGHLIGHT}[${STATUS}] ${DESCRIPTION}${CLEAR}      "
         #echo -e "${MOVE_CURSOR}${ROW} ${CHECK_COL}${HIGHLIGHT}[${STATUS}] ${DESCRIPTION}${CLEAR}      "
     done
+    
+    #DESCRIPTION=$(echo "${FEATURES[$CURRENT_FOCUS_INDEX]}" | cut -d: -f2)
+    #echo -e "${REVERSE_ON}[X] ${DESCRIPTION}${REVERSE_OFF}      "
+
+    #echo 
 }
 
 # Trap function to restore terminal settings upon exit
@@ -167,6 +174,7 @@ function handle_key_press() {
         $'\x1b[A') # UP Arrow
             if (( CURRENT_FOCUS_INDEX > 0 )); then
                 CURRENT_FOCUS_INDEX=$((CURRENT_FOCUS_INDEX - 1))
+            
             fi
             NEEDS_REDRAW=1
             return 0
@@ -218,6 +226,15 @@ function handle_key_press() {
     esac
 }
 
+function draw_change() {
+    echo
+    echo
+    echo
+    echo -e "           Advenced Selection${BOLD_OFF}"
+    DESCRIPTION=$(echo "${FEATURES[$FEATURE_STATE_INDEX]}" | cut -d: -f2)
+    echo -e "${REVERSE_ON}[X] ${DESCRIPTION}${REVERSE_OFF}      "
+    echo
+}
 function draw_screen() {
     #if $1 == clear; do
     #    tput clear # clear scree
@@ -226,7 +243,8 @@ function draw_screen() {
     tput clear
     #echo -e "${CLEAR_SCREEN}"
     draw_mode_list
-    draw_feature_list
+    #draw_feature_list
+    draw_change
     # FINAL INSTRUCTIONS
     echo
     echo -e "       Instructions:${BOLD_OFF} Use [Up]/[Down] to move, [Space] to select/toggle"
