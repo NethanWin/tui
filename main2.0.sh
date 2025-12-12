@@ -121,9 +121,35 @@ function toggle_option() {
             draw_line $CURRENT_MODE false false
             CURRENT_MODE=$CURRENT_CURSOR_INDEX
             draw_line $CURRENT_CURSOR_INDEX true true
+            set_feats_from_mode $CURRENT_CURSOR_INDEX
         fi
     fi
 
+}
+
+set_and_draw_feat() {
+    # $1 feat index
+    draw_line $(( $MODES_NUM + $1 )) true false
+    FEATURE_STATE[ $(( $MODES_NUM + $1 ))]=true
+}
+
+function set_feats_from_mode() {
+    case "$1" in
+        0 )
+            set_and_draw_feat 0
+            set_and_draw_feat 1
+            set_and_draw_feat 2
+            set_and_draw_feat 3
+            ;;
+        1)
+            set_and_draw_feat 0
+            ;;
+        2)
+
+            ;;
+
+    esac
+    
 }
 
 function draw_line() {
@@ -183,11 +209,11 @@ function setup_tui() {
     #tput cnorm
     # Save current terminal settings
     ORIGINAL_STTY=$(stty -g)
-
+    
     # Disable canonical mode and input echoing for single-key input
     stty -icanon min 1 -echo
 
-    #trap cleanup EXIT
+    trap after_tui EXIT
 
     CLOSE_TUI=false
     MODES=(
@@ -223,20 +249,27 @@ function setup_tui() {
     REVERSE_OFF=$(tput sgr0)
 }
 
-setup_tui
-draw_screen
+function after_tui() {
+    stty "$ORIGINAL_STTY"
+    tput cnorm
+    tput rmcup
+}
 
-# main loop
-while !($CLOSE_TUI); do
-    handle_key_press
-    #draw_screen
-done
 
-#after_tui
-#echo -e "${REVERSE_ON}[X] ${DESCRIPTION}${REVERSE_OFF}      "
+function main() {
+    setup_tui
+    draw_screen
+    # main loop
+    while !($CLOSE_TUI); do
+        handle_key_press
+    done
+    after_tui
 
-if $QUIT; then
-    echo "quiting"
-else
-    echo "cauntiniuing install"
-fi
+    if $QUIT; then
+        echo "quiting"
+    else
+
+        echo "cauntiniuing install"
+    fi
+}
+main
