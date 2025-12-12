@@ -1,57 +1,73 @@
 #!/bin/bash
 
-# make it countine to the other file
-
-
 # --- Configuration & State ---
+function setup_tui() {
+    MODES=("Dev" "All" "Minimal")
+    NUM_MODES=${#MODES[@]}
+    MODE_END_INDEX=$((NUM_MODES - 1)) # Index of the last mode
+
+    FEATURES=(
+        "DB_OPTIMIZE:Database Tuning and Optimization:0" "WEB_CACHING:Enable Web Server Caching:0"
+        "LOG_ROTATE:Setup Log Rotation & Monitoring:0"
+        "NET_FIREWALL:Configure Network Firewall Rules:0"
+        "BENCHMARKS:Run Post-Install Benchmarks:0"
+    )
+    NUM_FEATURES=${#FEATURES[@]}
+    TOTAL_ITEMS=$((NUM_MODES + NUM_FEATURES))   # to know when youre in the last item and then go up
+
+    # Current State Variables
+    CURRENT_FOCUS_INDEX=0   
+    CURRENT_MODE_INDEX=0      # Stores the actual selected mode index (0, 1, or 2)
+    NEEDS_REDRAW=1          # Flag to track if the screen needs to be redrawn
+
+    declare -a FEATURE_STATES
+    for i in "${!FEATURES[@]}"; do
+        FEATURE_STATES[$i]=0
+    done
+
+    # --- Terminal Control Codes (set using tput) ---
+    MOVE_CURSOR=$(tput cup)
+    CURSOR_HIDE=$(tput civis)
+    CURSOR_SHOW=$(tput cnorm)
+    REVERSE_ON=$(tput rev)
+    REVERSE_OFF=$(tput sgr0)
+    BOLD_ON=$(tput bold)
+    BOLD_OFF=$(tput sgr0)
 
 
-MODES=("Dev" "All" "Minimal")
-NUM_MODES=${#MODES[@]}
-MODE_END_INDEX=$((NUM_MODES - 1)) # Index of the last mode
+    # --- Layout Constants ---
+    RADIO_COL=5
+    CHECK_COL=40
+    START_ROW=3
+    TITLE_ROW=1
+    INSTRUCT_ROW=$((NUM_FEATURES + 5))
 
-FEATURES=(
-    "DB_OPTIMIZE:Database Tuning and Optimization:0" "WEB_CACHING:Enable Web Server Caching:0"
-    "LOG_ROTATE:Setup Log Rotation & Monitoring:0"
-    "NET_FIREWALL:Configure Network Firewall Rules:0"
-    "BENCHMARKS:Run Post-Install Benchmarks:0"
-)
-NUM_FEATURES=${#FEATURES[@]}
-TOTAL_ITEMS=$((NUM_MODES + NUM_FEATURES))   # to know when youre in the last item and then go up
 
-# Current State Variables
-CURRENT_FOCUS_INDEX=0   
-CURRENT_MODE_INDEX=0      # Stores the actual selected mode index (0, 1, or 2)
-NEEDS_REDRAW=1          # Flag to track if the screen needs to be redrawn
+    # --- Initial Setup ---
+    if ! command -v tput &> /dev/null; then
+        echo "Error: tput (part of ncurses) is required but not found."
+        exit 1
+    fi
 
-declare -a FEATURE_STATES
-for i in "${!FEATURES[@]}"; do
-    FEATURE_STATES[$i]=0
-done
+    CURRENT_MODE_INDEX=$CURRENT_FOCUS_INDEX 
+    apply_mode_defaults 
 
-# --- Terminal Control Codes (set using tput) ---
+    # setup screen to "raw mode"
+    echo -e "${CURSOR_HIDE}"
+    clear_screen
+    tput smcup
 
-clear_screen() {
-    tput clear
+    # Save current terminal settings
+    ORIGINAL_STTY=$(stty -g)
+
+    # Disable canonical mode and input echoing for single-key input
+    stty -icanon min 1 -echo
+
+    trap cleanup EXIT
+    NEEDS_REDRAW=1      # draw screen first time
 }
 
-MOVE_CURSOR=$(tput cup)
-CURSOR_HIDE=$(tput civis)
-CURSOR_SHOW=$(tput cnorm)
-REVERSE_ON=$(tput rev)
-REVERSE_OFF=$(tput sgr0)
-BOLD_ON=$(tput bold)
-BOLD_OFF=$(tput sgr0)
-
-# --- Layout Constants ---
-RADIO_COL=5
-CHECK_COL=40
-START_ROW=3
-TITLE_ROW=1
-INSTRUCT_ROW=$((NUM_FEATURES + 5))
-
 # --- Drawing Functions ---
-
 function apply_mode_defaults() {
     local mode="${MODES[$CURRENT_MODE_INDEX]}"
     
@@ -127,42 +143,20 @@ function draw_feature_list() {
     done
 }
 
-# --- Initial Setup ---
-if ! command -v tput &> /dev/null; then
-    echo "Error: tput (part of ncurses) is required but not found."
-    exit 1
-fi
-
-CURRENT_MODE_INDEX=$CURRENT_FOCUS_INDEX 
-apply_mode_defaults 
-
-# setup screen to "raw mode"
-echo -e "${CURSOR_HIDE}"
-clear_screen
-tput smcup
-
-# Save current terminal settings
-ORIGINAL_STTY=$(stty -g)
-
-# Disable canonical mode and input echoing for single-key input
-stty -icanon min 1 -echo
-
 # Trap function to restore terminal settings upon exit
 function cleanup() {
     stty "$ORIGINAL_STTY"
     tput cnorm
     tput rmcup
 }
-trap cleanup EXIT
 
 function handle_key_press() {
     # Read single character without timeout
     IFS='' read -n 1 -s -r key
     #key=$(dd bs=1 count=1 2>/dev/null) # old way not needed
 
-    # Handle Escape Sequences (Arrows)
+    # Reads two key presses to detect arrow keys
     if [[ "$key" == $'\x1b' ]]; then
-        # Read the next two characters for the arrow key sequence without waiting
         read -n 2 -t 0.001 sequence
         key="$key$sequence"
     fi
@@ -225,6 +219,10 @@ function handle_key_press() {
 }
 
 function draw_screen() {
+    #if $1 == clear; do
+    #    tput clear # clear scree
+    #fi
+
     tput clear
     #echo -e "${CLEAR_SCREEN}"
     draw_mode_list
@@ -235,7 +233,6 @@ function draw_screen() {
     echo -e "                     [Enter] to apply, [Q] to quit."
     NEEDS_REDRAW=0
 }
-
 
 function after_tui() {
     cleanup
@@ -271,14 +268,12 @@ function after_tui() {
 
 }
 
-
-NEEDS_REDRAW=1
+setup_tui
 draw_screen
-# --- Main Interaction Loop (Final Key Mapping) ---
+# main loop
 while handle_key_press; do
     if [[ $NEEDS_REDRAW -eq 1 ]]; then
         draw_screen
     fi
 done
-
 after_tui
