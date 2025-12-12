@@ -53,7 +53,10 @@ function move_up() {
 function move_down() {
     if (($CURRENT_CURSOR_INDEX >= $MODES_NUM)); then
         # feat
-        draw_line $CURRENT_CURSOR_INDEX ${FEATURE_STATE[$CURRENT_CURSOR_INDEX]} false
+        local state="${FEATURE_STATE[$CURRENT_CURSOR_INDEX]}"
+        local condition=$([ $state -eq 1 ] && echo true || echo false)
+
+        draw_line $CURRENT_CURSOR_INDEX $condition false
         CURRENT_CURSOR_INDEX=$((CURRENT_CURSOR_INDEX + 1))
         draw_line $CURRENT_CURSOR_INDEX ${FEATURE_STATE[$CURRENT_CURSOR_INDEX]} true
     else
@@ -73,13 +76,13 @@ function toggle_option() {
     local state
     if (($CURRENT_CURSOR_INDEX >= $MODES_NUM)); then
         # toggle feat
-        if [${FEATURE_STATE[(($CURRENT_CURSOR_INDEX - $MODE_NUM))]} == 1]; then
+        if [ "${FEATURE_STATE[$(($CURRENT_CURSOR_INDEX - $MODES_NUM))]}" == 1 ]; then
             state=0
         else
             state=1
         fi
-        FEATURE_STATE[(($CURRENT_CURSOR_INDEX - $MODE_NUM))]=$state
-        draw_line $CURRENT_CURSOR_INDEX $state true
+        FEATURE_STATE[$(($CURRENT_CURSOR_INDEX - $MODES_NUM))]=$state
+        draw_line $CURRENT_CURSOR_INDEX $([ $state -eq 1 ] && echo true || echo false) true
     else
         # set mode
         if (($CURRENT_MODE != $CURRENT_CURSOR_INDEX)); then
@@ -111,7 +114,8 @@ function draw_line() {
         echo -e "${start}($char) ${MODES[$1]}${end}"
     else
         # Feature
-        if [ "$2" = "true" ]; then
+        echo $2
+        if [ "$2" = true ]; then
             char="V"
         else
             char=" "
@@ -124,26 +128,27 @@ function draw_line() {
 #setup_tui
 #draw_screen
 CLOSE_TUI=false
-declare -a MODES=(
+MODES=(
     "mode dev boy"
     "mode give me bloattt!!"
     "mode basic man"
 )
-declare -a FEATURES=(
+FEATURES=(
     "feat install ssh"
     "feat setup minikube"
     "feat upgrade"
     "feat reboot"
 )
-declare -a FEATURE_STATE=(
+FEATURE_STATE=(
     0
     0
     0
     0
 )
 
-MODES_NUM=${#MODES[@]}
-FEATURES_NUM=${#FEATURES[@]}
+MODES_NUM="${#MODES[@]}"
+
+FEATURES_NUM="${#FEATURES[@]}"
 CURRENT_MODE=0
 
 CURRENT_CURSOR_INDEX=0
