@@ -1,22 +1,22 @@
 A selector TUI for Archnet (install script with options)
 
 Preview:
+```
+      Wecome to the Archnet install menu
+      Select 1 Install Option:    
 
-      Choose Install Option:      
+      (*) dev boy
+      ( ) mode give me bloattt!!
+      ( ) basic man
 
-      ( ) BASIC      
-      (*) STANDARD      
-      ( ) ADVANCED      
+      Advanced Selection:
 
+      [X] install ssh
+      [X] setup minikube
+      [ ] upgrade
+      [ ] reboot
+      
 
-
-           Advenced Selection
-
-     [X] Database Tuning and Optimization      
-     [ ] Enable Web Server Caching      
-     [X] Setup Log Rotation & Monitoring      
-     [X] Configure Network Firewall Rules      
-     [ ] Run Post-Install Benchmarks      
-
-       Instructions: Use [Up]/[Down] to move, [Space] to select/toggle
-                     [Enter] to apply, [Q] to quit.
+      Instructions: Use [Up]/[Down] to move, [Space] to select/toggle
+                    [Enter] to apply, [Q] to quit.
+```

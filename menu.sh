@@ -5,8 +5,7 @@ function setup_tui() {
     tput clear
     tput smcup
     tput civis 
-    #tput cnorm
-    # Save current terminal settings
+    # Save terminal settings
     ORIGINAL_STTY=$(stty -g)
     
     # Disable canonical mode and input echoing for single-key input
@@ -16,22 +15,17 @@ function setup_tui() {
 
     STOP_MENU=false
     MODES=(
-        "mode dev boy"
-        "mode give me bloattt!!"
-        "mode basic man"
+        "dev boy"
+        "give me bloattt!!"
+        "basic man"
     )
     FEATURES=(
-        "feat install ssh"
-        "feat setup minikube"
-        "feat upgrade"
-        "feat reboot"
+        "install ssh"
+        "setup minikube"
+        "upgrade"
+        "reboot"
     )
-    FEATURE_STATE=(
-        "false"
-        "false"
-        "false"
-        "false"
-    )
+    FEATURE_STATE=("" "" "" "")
 
     MODE_LEN="${#MODES[@]}"
     
@@ -45,12 +39,39 @@ function setup_tui() {
 
     REVERSE_ON=$(tput rev)
     REVERSE_OFF=$(tput sgr0)
+
+    # (before_headers after_headers after_middle after_options)
+    EMPTY_LINES_SPACING=(2 1 2 1 2)
+    COL=5
+}
+
+function draw_static_screen() {
+    STATIC_INDEX=0  # incriments in draw_static_line
+    # draw static text
+    draw_static_line ${EMPTY_LINES_SPACING[0]}
+    draw_static_line "Wecome to the Archnet install menu" "header"
+    draw_static_line "Select 1 Install Option:" "header"
+    draw_static_line ${EMPTY_LINES_SPACING[1]}
+    MODE_START_INDEX=$STATIC_INDEX
+
+    draw_static_line $MODE_LEN
+    draw_static_line ${EMPTY_LINES_SPACING[2]}
+    FEAT_START_INDEX=$STATIC_INDEX
+
+    draw_static_line "Advanced Selection:" "middle"
+    draw_static_line ${EMPTY_LINES_SPACING[3]}
+
+    draw_static_line $FEATURES_NUM
+    draw_static_line ${EMPTY_LINES_SPACING[4]}
+    draw_static_line "Instructions: Use [Up]/[Down] to move, [Space] to select/toggle" "footer"
+    draw_static_line "[Enter] to apply, [Q] to quit." "footer"
 }
 
 function draw_screen() {
-    
     tput clear
-    
+    draw_static_screen
+
+    # draw Modes
     for ((i=0; i<$MODE_LEN; i++)); do
         if [ $i -eq $CURRENT_MODE ]; then
             draw_line $i true true
@@ -59,10 +80,25 @@ function draw_screen() {
         fi
     done
 
+    # draw feats
     set_feats_from_mode $CURRENT_MODE
-    #for ((i=$MODE_LEN; i<$TOTAL_ITEMS; i++)); do
-    #    draw_line $i "${FEATURE_STATE[$((i - MODE_LEN))]}" false 
-    #done
+}
+
+function draw_static_line() {
+    # $1: text
+    # $2: kind (header,middle,footer)
+
+    # $1: number of spaces
+    tput cup $STATIC_INDEX $COL
+    if [ $# -eq 1 ]; then
+        for ((i=0; i<$1; i++)); do
+            echo -e ""
+            STATIC_INDEX=$(( $STATIC_INDEX + 1 ))
+        done
+    else 
+        echo -e "$1"
+        STATIC_INDEX=$(( $STATIC_INDEX + 1 ))
+    fi
 }
 
 function handle_key_press() {
@@ -208,7 +244,7 @@ function apply_feats() {
 function set_feats_from_mode() {
     local feats
     case "$1" in
-        0) feats=(true false true false);;
+        0) feats=(true true false false);;
         1) feats=(true true true true);;
         2) feats=(true false false false);;
     esac
@@ -219,8 +255,7 @@ function draw_line() {
     # $1: cursor index (0-end of features)
     # $2: mark or unmark state?
     # $3: is reverse
-    
-    tput cup $1 5
+
     local start
     local char
     local end=""
@@ -231,25 +266,29 @@ function draw_line() {
 
     if (($1 < $MODE_LEN)); then
         # Mode
+        start="${Blue}$start"
+        end="${NC}${end}"
+
         if "$2" = "true"; then
             char="*"
         else
             char=" "
         fi
+        tput cup $(( $1 + $MODE_START_INDEX )) $COL
         echo -e "${start}($char) ${MODES[$1]}${end}"
     else
         # Feature
+        start="${Green}$start"
+        end="${NC}${end}"
         if [[ "$2" = "true" ]]; then
             char="V"
         else
             char=" "
         fi
+        tput cup $(( $1 + $FEAT_START_INDEX )) $COL
         echo -e "${start}[$char] ${FEATURES[$1-$MODE_LEN]}${end}"
     fi
 }
-
-
-
 
 function after_tui() {
     stty "$ORIGINAL_STTY"
@@ -271,9 +310,11 @@ function main() {
     if $QUIT; then
         echo "quiting"
     else
-        echo "cauntiniuing install"
+        
+        echo "starting install..."
+        echo "the results are:"
+        echo -e "$GREEN${FEATURE_STATE[@]}$NC"
     fi
 }
 
 main
-echo damn
