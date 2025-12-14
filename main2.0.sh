@@ -32,13 +32,13 @@ function handle_key_press() {
         # Enter Key: Confirm/Submit (Enter is $'\x0a' or sometimes $'\r' for Carriage Return)
         #$'\n' | $'\r') 
         $'\x0a' | '')
-            CLOSE_TUI=true  # finishes loop
+            STOP_MENU=true  # finishes loop
             QUIT=false
             ;; 
         
         # Q: Quit
         'q' | 'Q')
-            CLOSE_TUI=true
+            STOP_MENU=true
             QUIT=true       # quiting the install
             ;;
     esac
@@ -48,17 +48,17 @@ function move_up() {
     if (($CURRENT_CURSOR_INDEX <= 0)); then
         return
     fi
-    if (($CURRENT_CURSOR_INDEX >= $MODES_NUM)); then
+    if (($CURRENT_CURSOR_INDEX >= $MODE_LEN)); then
         # feat
-        CURRENT_FEAT_INDEX=$(($CURRENT_CURSOR_INDEX - $MODES_NUM))
+        CURRENT_FEAT_INDEX=$(($CURRENT_CURSOR_INDEX - $MODE_LEN))
         local condition="${FEATURE_STATE[$CURRENT_FEAT_INDEX]}"
         draw_line $CURRENT_CURSOR_INDEX $condition false
         CURRENT_CURSOR_INDEX=$((CURRENT_CURSOR_INDEX - 1))
         CURRENT_FEAT_INDEX=$((CURRENT_FEAT_INDEX - 1))
 
-        if (($CURRENT_CURSOR_INDEX == (($MODES_NUM - 1)))); then
+        if (($CURRENT_CURSOR_INDEX == (($MODE_LEN - 1)))); then
             # moving between feat to mode
-            CURRENT_FEAT_INDEX=$(($CURRENT_CURSOR_INDEX - $MODES_NUM))
+            CURRENT_FEAT_INDEX=$(($CURRENT_CURSOR_INDEX - $MODE_LEN))
             INDEX=$([ "$CURRENT_MODE" -eq "$CURRENT_CURSOR_INDEX" ] && echo true || echo false)
             draw_line $CURRENT_CURSOR_INDEX $INDEX true
 
@@ -74,12 +74,12 @@ function move_up() {
 }
 
 function move_down() {
-    if (($CURRENT_CURSOR_INDEX >= $(($TOTAL_NUM - 1)))); then
+    if (($CURRENT_CURSOR_INDEX >= $(($TOTAL_ITEMS - 1)))); then
         return
     fi
-    if (($CURRENT_CURSOR_INDEX >= $MODES_NUM)); then
+    if (($CURRENT_CURSOR_INDEX >= $MODE_LEN)); then
         # feat
-        CURRENT_FEAT_INDEX=$(($CURRENT_CURSOR_INDEX - $MODES_NUM))
+        CURRENT_FEAT_INDEX=$(($CURRENT_CURSOR_INDEX - $MODE_LEN))
         local condition="${FEATURE_STATE[$CURRENT_FEAT_INDEX]}"
         draw_line $CURRENT_CURSOR_INDEX $condition false
         CURRENT_CURSOR_INDEX=$((CURRENT_CURSOR_INDEX + 1))
@@ -89,9 +89,9 @@ function move_down() {
         # mode
         draw_line $CURRENT_CURSOR_INDEX $([ "$CURRENT_MODE" -eq "$CURRENT_CURSOR_INDEX" ] && echo true || echo false) false
         CURRENT_CURSOR_INDEX=$((CURRENT_CURSOR_INDEX + 1))
-        if (($CURRENT_CURSOR_INDEX == $MODES_NUM)); then
+        if (($CURRENT_CURSOR_INDEX == $MODE_LEN)); then
             # moving between mode and feat
-            CURRENT_FEAT_INDEX=$(($CURRENT_CURSOR_INDEX - $MODES_NUM))
+            CURRENT_FEAT_INDEX=$(($CURRENT_CURSOR_INDEX - $MODE_LEN))
             INDEX=${FEATURE_STATE[$CURRENT_FEAT_INDEX]}
             draw_line $CURRENT_CURSOR_INDEX $INDEX true
         else
@@ -103,9 +103,9 @@ function move_down() {
 function toggle_option() {
     # in space key press
     local state
-    if (($CURRENT_CURSOR_INDEX >= $MODES_NUM)); then
+    if (($CURRENT_CURSOR_INDEX >= $MODE_LEN)); then
         # toggle feat
-        CURRENT_FEAT_INDEX=$(($CURRENT_CURSOR_INDEX - $MODES_NUM))
+        CURRENT_FEAT_INDEX=$(($CURRENT_CURSOR_INDEX - $MODE_LEN))
         state="${FEATURE_STATE[$CURRENT_FEAT_INDEX]}"
         if $state; then
             state=false
@@ -127,22 +127,22 @@ function toggle_option() {
 
 }
 
-set_and_draw_feat() {
+draw_feats() {
     # $1 feat index
-    draw_line $(( $MODES_NUM + $1 )) true false
-    FEATURE_STATE[ $(( $MODES_NUM + $1 ))]=true
+    draw_line $(( $MODE_LEN + $1 )) true false
+    FEATURE_STATE[ $(( $MODE_LEN + $1 ))]=true
 }
 
 function set_feats_from_mode() {
     case "$1" in
         0 )
-            set_and_draw_feat 0
-            set_and_draw_feat 1
-            set_and_draw_feat 2
-            set_and_draw_feat 3
+            draw_feats 0
+            draw_feats 1
+            draw_feats 2
+            draw_feats 3
             ;;
         1)
-            set_and_draw_feat 0
+            draw_feats 0
             ;;
         2)
 
@@ -165,7 +165,7 @@ function draw_line() {
             end="${REVERSE_OFF}"
     fi
 
-    if (($1 < $MODES_NUM)); then
+    if (($1 < $MODE_LEN)); then
         # Mode
         if "$2" = "true"; then
             char="*"
@@ -180,7 +180,7 @@ function draw_line() {
         else
             char=" "
         fi
-        echo -e "${start}[$char] ${FEATURES[$1-$MODES_NUM]}${end}"
+        echo -e "${start}[$char] ${FEATURES[$1-$MODE_LEN]}${end}"
     fi
 }
 
@@ -188,7 +188,7 @@ function draw_screen() {
     
     tput clear
     
-    for ((i=0; i<$MODES_NUM; i++)); do
+    for ((i=0; i<$MODE_LEN; i++)); do
         if [ $i -eq $CURRENT_MODE ]; then
             draw_line $i true true
         else
@@ -197,8 +197,8 @@ function draw_screen() {
     done
 
 
-    for ((i=$MODES_NUM; i<$TOTAL_NUM; i++)); do
-        draw_line $i ${FEATURE_STATE[$(($i - $MODES_NUM))]} false 
+    for ((i=$MODE_LEN; i<$TOTAL_ITEMS; i++)); do
+        draw_line $i ${FEATURE_STATE[$(($i - $MODE_LEN))]} false 
     done
 }
 
@@ -215,7 +215,7 @@ function setup_tui() {
 
     trap after_tui EXIT
 
-    CLOSE_TUI=false
+    STOP_MENU=false
     MODES=(
         "mode dev boy"
         "mode give me bloattt!!"
@@ -234,12 +234,12 @@ function setup_tui() {
         false
     )
 
-    MODES_NUM="${#MODES[@]}"
+    MODE_LEN="${#MODES[@]}"
 
     
     FEATURES_NUM="${#FEATURES[@]}"
     CURRENT_MODE=0
-    TOTAL_NUM=$(($MODES_NUM + $FEATURES_NUM))
+    TOTAL_ITEMS=$(($MODE_LEN + $FEATURES_NUM))
 
     CURRENT_CURSOR_INDEX=0
     PREVIOUS_CURSOR_INDEX=-1
@@ -260,7 +260,7 @@ function main() {
     setup_tui
     draw_screen
     # main loop
-    while !($CLOSE_TUI); do
+    while !($STOP_MENU); do
         handle_key_press
     done
     after_tui
@@ -268,7 +268,6 @@ function main() {
     if $QUIT; then
         echo "quiting"
     else
-
         echo "cauntiniuing install"
     fi
 }
