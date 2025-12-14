@@ -1,5 +1,69 @@
+#!/bin/bash
 
 
+function setup_tui() {
+    tput clear
+    tput smcup
+    tput civis 
+    #tput cnorm
+    # Save current terminal settings
+    ORIGINAL_STTY=$(stty -g)
+    
+    # Disable canonical mode and input echoing for single-key input
+    stty -icanon min 1 -echo
+
+    trap after_tui EXIT
+
+    STOP_MENU=false
+    MODES=(
+        "mode dev boy"
+        "mode give me bloattt!!"
+        "mode basic man"
+    )
+    FEATURES=(
+        "feat install ssh"
+        "feat setup minikube"
+        "feat upgrade"
+        "feat reboot"
+    )
+    FEATURE_STATE=(
+        "false"
+        "false"
+        "false"
+        "false"
+    )
+
+    MODE_LEN="${#MODES[@]}"
+    
+    FEATURES_NUM="${#FEATURES[@]}"
+    CURRENT_MODE=0
+    TOTAL_ITEMS=$(($MODE_LEN + $FEATURES_NUM))
+
+    CURRENT_CURSOR_INDEX=0
+    PREVIOUS_CURSOR_INDEX=-1
+    CURSOR_ON_FEATURE=false
+
+    REVERSE_ON=$(tput rev)
+    REVERSE_OFF=$(tput sgr0)
+}
+
+function draw_screen() {
+    
+    tput clear
+    
+    for ((i=0; i<$MODE_LEN; i++)); do
+        if [ $i -eq $CURRENT_MODE ]; then
+            draw_line $i true true
+        else
+            draw_line $i false false
+        fi
+    done
+
+    set_feats_from_mode $CURRENT_MODE
+    #for ((i=$MODE_LEN; i<$TOTAL_ITEMS; i++)); do
+    #    draw_line $i "${FEATURE_STATE[$((i - MODE_LEN))]}" false 
+    #done
+}
 
 function handle_key_press() {
     # Read single character without timeout
@@ -127,29 +191,28 @@ function toggle_option() {
 
 }
 
-draw_feats() {
-    # $1 feat index
-    draw_line $(( $MODE_LEN + $1 )) true false
-    FEATURE_STATE[ $(( $MODE_LEN + $1 ))]=true
+function apply_feats() {
+    # $1 feat array
+    # change the different feat states
+    local -n new_feats=$1
+    for ((i = 0; i < $FEATURES_NUM; i++)); do
+        if [[ ${FEATURE_STATE[i]} != ${new_feats[i]} ]]; then
+            local new_index=$(( $MODE_LEN + $i ))
+            FEATURE_STATE[i]="${new_feats[i]}"              # updates the array
+            draw_line "$new_index" "${new_feats[i]}" false   # draw feat with opposit mark
+            
+        fi
+    done
 }
 
 function set_feats_from_mode() {
+    local feats
     case "$1" in
-        0 )
-            draw_feats 0
-            draw_feats 1
-            draw_feats 2
-            draw_feats 3
-            ;;
-        1)
-            draw_feats 0
-            ;;
-        2)
-
-            ;;
-
+        0) feats=(true false true false);;
+        1) feats=(true true true true);;
+        2) feats=(true false false false);;
     esac
-    
+    apply_feats feats
 }
 
 function draw_line() {
@@ -160,6 +223,7 @@ function draw_line() {
     tput cup $1 5
     local start
     local char
+    local end=""
     if [ "$3" = "true" ]; then
             start="$start${REVERSE_ON}"
             end="${REVERSE_OFF}"
@@ -175,7 +239,7 @@ function draw_line() {
         echo -e "${start}($char) ${MODES[$1]}${end}"
     else
         # Feature
-        if [ "$2" = "true" ]; then
+        if [[ "$2" = "true" ]]; then
             char="V"
         else
             char=" "
@@ -184,70 +248,8 @@ function draw_line() {
     fi
 }
 
-function draw_screen() {
-    
-    tput clear
-    
-    for ((i=0; i<$MODE_LEN; i++)); do
-        if [ $i -eq $CURRENT_MODE ]; then
-            draw_line $i true true
-        else
-            draw_line $i false false
-        fi
-    done
 
 
-    for ((i=$MODE_LEN; i<$TOTAL_ITEMS; i++)); do
-        draw_line $i ${FEATURE_STATE[$(($i - $MODE_LEN))]} false 
-    done
-}
-
-function setup_tui() {
-    tput clear
-    tput smcup
-    tput civis 
-    #tput cnorm
-    # Save current terminal settings
-    ORIGINAL_STTY=$(stty -g)
-    
-    # Disable canonical mode and input echoing for single-key input
-    stty -icanon min 1 -echo
-
-    trap after_tui EXIT
-
-    STOP_MENU=false
-    MODES=(
-        "mode dev boy"
-        "mode give me bloattt!!"
-        "mode basic man"
-    )
-    FEATURES=(
-        "feat install ssh"
-        "feat setup minikube"
-        "feat upgrade"
-        "feat reboot"
-    )
-    FEATURE_STATE=(
-        false
-        false
-        false
-        false
-    )
-
-    MODE_LEN="${#MODES[@]}"
-
-    
-    FEATURES_NUM="${#FEATURES[@]}"
-    CURRENT_MODE=0
-    TOTAL_ITEMS=$(($MODE_LEN + $FEATURES_NUM))
-
-    CURRENT_CURSOR_INDEX=0
-    PREVIOUS_CURSOR_INDEX=-1
-    CURSOR_ON_FEATURE=false
-
-    REVERSE_ON=$(tput rev)
-    REVERSE_OFF=$(tput sgr0)
-}
 
 function after_tui() {
     stty "$ORIGINAL_STTY"
@@ -257,10 +259,11 @@ function after_tui() {
 
 
 function main() {
+    set -e
     setup_tui
     draw_screen
     # main loop
-    while !($STOP_MENU); do
+    while [[ "$STOP_MENU" != true ]]; do
         handle_key_press
     done
     after_tui
@@ -271,4 +274,6 @@ function main() {
         echo "cauntiniuing install"
     fi
 }
+
 main
+echo damn
