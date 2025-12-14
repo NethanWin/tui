@@ -1,6 +1,28 @@
 #!/bin/bash
 set -e
-exec 2>error_log.txt
+
+# Regular Colors
+Black='\033[0;30m'        # Black
+Red='\033[0;31m'          # Red
+Green='\033[0;32m'        # Green
+Yellow='\033[0;33m'       # Yellow
+Blue='\033[0;34m'         # Blue
+Purple='\033[0;35m'       # Purple
+Cyan='\033[0;36m'         # Cyan
+White='\033[0;37m'        # White
+
+# Bold
+BBlack='\033[1;30m'       # Black
+BRed='\033[1;31m'         # Red
+BGreen='\033[1;32m'       # Green
+BYellow='\033[1;33m'      # Yellow
+BBlue='\033[1;34m'        # Blue
+BPurple='\033[1;35m'      # Purple
+BCyan='\033[1;36m'        # Cyan
+BWhite='\033[1;37m'       # White
+
+NC='\033[0m' # No Color
+
 
 function setup_tui() {
     tput clear
@@ -16,15 +38,15 @@ function setup_tui() {
 
     STOP_MENU=false
     MODES=(
-        "mode dev boy"
-        "mode give me bloattt!!"
-        "mode basic man"
+        "dev boy"
+        "give me bloattt!!"
+        "basic man"
     )
     FEATURES=(
-        "feat install ssh"
-        "feat setup minikube"
-        "feat upgrade"
-        "feat reboot"
+        "install ssh"
+        "setup minikube"
+        "upgrade"
+        "reboot"
     )
     FEATURE_STATE=("" "" "" "")
 
@@ -42,11 +64,11 @@ function setup_tui() {
     REVERSE_OFF=$(tput sgr0)
 
     # (before_headers after_headers after_middle after_options)
-    EMPTY_LINES_SPACING=(5 5 5 5 5)
+    EMPTY_LINES_SPACING=(2 1 2 1 2)
     COL=5
 }
 
-draw_static_screen() {
+function draw_static_screen() {
     STATIC_INDEX=0  # incriments in draw_static_line
     # draw static text
     draw_static_line ${EMPTY_LINES_SPACING[0]}
@@ -64,7 +86,6 @@ draw_static_screen() {
 
     draw_static_line $FEATURES_NUM
     draw_static_line ${EMPTY_LINES_SPACING[4]}
-    echo $STATIC_INDEX >> error_log.txt
     draw_static_line "Instructions: Use [Up]/[Down] to move, [Space] to select/toggle" "footer"
     draw_static_line "[Enter] to apply, [Q] to quit." "footer"
 }
@@ -86,7 +107,7 @@ function draw_screen() {
     set_feats_from_mode $CURRENT_MODE
 }
 
-draw_static_line() {
+function draw_static_line() {
     # $1: text
     # $2: kind (header,middle,footer)
 
@@ -94,7 +115,6 @@ draw_static_line() {
     tput cup $STATIC_INDEX $COL
     if [ $# -eq 1 ]; then
         for ((i=0; i<$1; i++)); do
-            echo "i: $run $STATIC_INDEX" >> error_log.txt
             echo -e ""
             STATIC_INDEX=$(( $STATIC_INDEX + 1 ))
         done
@@ -247,7 +267,7 @@ function apply_feats() {
 function set_feats_from_mode() {
     local feats
     case "$1" in
-        0) feats=(true false true false);;
+        0) feats=(true true false false);;
         1) feats=(true true true true);;
         2) feats=(true false false false);;
     esac
@@ -259,7 +279,6 @@ function draw_line() {
     # $2: mark or unmark state?
     # $3: is reverse
 
-    #tput cup $(( $1 + 5 )) $COL
     local start
     local char
     local end=""
@@ -270,6 +289,9 @@ function draw_line() {
 
     if (($1 < $MODE_LEN)); then
         # Mode
+        start="${Blue}$start"
+        end="${NC}${end}"
+
         if "$2" = "true"; then
             char="*"
         else
@@ -279,6 +301,8 @@ function draw_line() {
         echo -e "${start}($char) ${MODES[$1]}${end}"
     else
         # Feature
+        start="${Green}$start"
+        end="${NC}${end}"
         if [[ "$2" = "true" ]]; then
             char="V"
         else
@@ -309,11 +333,11 @@ function main() {
     if $QUIT; then
         echo "quiting"
     else
-    
+        
         echo "starting install..."
-        echo "${FEATURE_STATE[@]}"
+        echo "the results are:"
+        echo -e "$GREEN${FEATURE_STATE[@]}$NC"
     fi
 }
 
 main
-echo damn

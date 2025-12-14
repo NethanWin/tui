@@ -5,17 +5,17 @@ Preview:
       Wecome to the Archnet install menu
       Select 1 Install Option:    
 
-      ( ) BASIC      
-      (*) STANDARD      
-      ( ) ADVANCED      
+      (*) dev boy
+      ( ) mode give me bloattt!!
+      ( ) basic man
 
       Advanced Selection:
 
-     [X] Database Tuning and Optimization      
-     [ ] Enable Web Server Caching      
-     [X] Setup Log Rotation & Monitoring      
-     [X] Configure Network Firewall Rules      
-     [ ] Run Post-Install Benchmarks      
+      [X] install ssh
+      [X] setup minikube
+      [ ] upgrade
+      [ ] reboot
+      
 
       Instructions: Use [Up]/[Down] to move, [Space] to select/toggle
                     [Enter] to apply, [Q] to quit.
@@ -37,6 +37,5 @@ draw_static_line ${EMPTY_LINES_SPACING[0]}
 
     draw_static_line $FEATURES_NUM
     draw_static_line ${EMPTY_LINES_SPACING[4]}
-    echo $STATIC_INDEX >> error_log.txt
     draw_static_line "Instructions: Use [Up]/[Down] to move, [Space] to select/toggle" "footer"
     draw_static_line "[Enter] to apply, [Q] to quit." "footer"
